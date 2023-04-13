@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DocuLegal</title>
+  <link rel="stylesheet" href="./static/style.css">
+</head>
+<body>
+  <h1><strong>DocuLegal</strong></h1>
+  
+  <br><br>
+    <h4>L'outil doit être utilisé avec des documents excel en français. Il faut sélectionner le excel puis le word quand on utilise l'outil. 
+    <br>
+    <br>Voici le prompt usuel :</h4>
+  <div style="width: 40%">
+    Voici les intitulés de colonne de mon excel : <strong>__header__</strong>. A partir de ces colonnes, j'aimerais identifier les valeurs auxquelles elles correspondent dans le document que je vais mettre juste après. Le but étant de les variabiliser pour générer un document similaire avec d'autres valeurs. Voici un exemple de la première ligne avec les exemples de valeur séparées par un point virgule pour chacune des colonnes : <strong>__firstExcelRow__</strong>. Elles devraient être similaires dans le template et j'aimerais donc que tu me proposes un template variabilisé avec mes intitulés de colonnes. Je veux uniquement le template dans ta réponse. Voici ci-desous le texte du template : 
+  </div>
+  <!--<img src="https://media.tenor.com/ymMJUF1eIWwAAAAd/quoicoubeh-david-la-caill%C3%A9.gif" style="float: right;margin-right: 5%;margin-top: -20%;">-->
+
+  <br><br>
+
+ <!-- <form method="POST" action="http://localhost:8080/DocuLegal" enctype="multipart/form-data">
+    <label>Upload Files:</label><br>
+    <input type="file" name="files[]" multiple><br>
+    
+    <br>
+
+    <label>Enter text:</label><br>
+    <textarea name="text" rows="20" cols="80"></textarea><br>
+
+    <button type="submit">Process my files</button>
+  </form>-->
+  <form id="form"method="POST" action="http://localhost:8080/DocuLegal"enctype="multipart/form-data">
+    <!-- First file input field -->
+    <p>Upload your Excel file below : </p>
+    <input type="file" id="file1" name="file1" onchange="uploadFile1()"><br>
+
+    <!-- First upload button 
+    <button type="button" onclick="uploadFile1()">Upload Excel file</button><br>-->
+    
+    <!-- Second file input field -->
+
+    <p>Upload your Word file below : </p>
+    <input type="file" id="file2" name="file2"  onchange="uploadFile2()"><br>
+
+    <!-- Second upload button
+    <button type="button" onclick="uploadFile2()">Upload Word file</button><br>-->
+
+    <br>
+
+    <!-- Text area -->
+    <label>Enter chatGPT prompt :</label><br>
+    <textarea name="text" rows="20" cols="80"></textarea><br>
+
+    <!-- Submit button -->
+    <button type="submit" onclick="submitForm()">Process Files</button>
+</form>
+
+</body>
+</html>
