@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>DocuLegal</title>
-  <link rel="stylesheet" href="./static/style.css">
+  <link rel="stylesheet" href="http://localhost:8080/static/style.css">
 </head>
 <body>
   <h1><strong>DocuLegal</strong></h1>
@@ -18,43 +18,135 @@
   <!--<img src="https://media.tenor.com/ymMJUF1eIWwAAAAd/quoicoubeh-david-la-caill%C3%A9.gif" style="float: right;margin-right: 5%;margin-top: -20%;">-->
 
   <br><br>
-
- <!-- <form method="POST" action="http://localhost:8080/DocuLegal" enctype="multipart/form-data">
-    <label>Upload Files:</label><br>
-    <input type="file" name="files[]" multiple><br>
-    
-    <br>
-
-    <label>Enter text:</label><br>
-    <textarea name="text" rows="20" cols="80"></textarea><br>
-
-    <button type="submit">Process my files</button>
-  </form>-->
+  <label>Enter chatGPT prompt :</label><br>
+  <textarea name="text" rows="20" cols="80"></textarea><br>
+ <!--
   <form id="form"method="POST" action="http://localhost:8080/DocuLegal"enctype="multipart/form-data">
-    <!-- First file input field -->
     <p>Upload your Excel file below : </p>
     <input type="file" id="file1" name="file1" onchange="uploadFile1()"><br>
 
-    <!-- First upload button 
-    <button type="button" onclick="uploadFile1()">Upload Excel file</button><br>-->
+    <button type="button" onclick="uploadFile1()">Upload Excel file</button><br>
     
-    <!-- Second file input field -->
-
     <p>Upload your Word file below : </p>
     <input type="file" id="file2" name="file2"  onchange="uploadFile2()"><br>
-
-    <!-- Second upload button
-    <button type="button" onclick="uploadFile2()">Upload Word file</button><br>-->
+    <button type="button" onclick="uploadFile2()">Upload Word file</button><br>
 
     <br>
 
-    <!-- Text area -->
     <label>Enter chatGPT prompt :</label><br>
     <textarea name="text" rows="20" cols="80"></textarea><br>
 
-    <!-- Submit button -->
     <button type="submit" onclick="submitForm()">Process Files</button>
-</form>
+</form>-->
+<form>
+  <div id="file1Container">
+    <input type="file" id="file1" name="file1" style="display:none">
+  </div>
+  <button type="button" onclick="addFile1()">Upload File 1</button>
 
+  <div id="file2Container">
+    <input type="file" id="file2" name="file2" style="display:none">
+  </div>
+  <button type="button" onclick="addFile2()">Upload File 2</button>
+  <br><br>
+  <p>List of uploaded files :</p>
+  <ul id="fileList"></ul>
+  <br><br>
+  <button type="button" onclick="submitForm()">Process Files</button>
+</form>
+<div id="responseContainer"></div>
+<script>
+  var formData = new FormData();
+
+  function uploadFile1() {
+      var input = document.getElementById('file1');
+      var file = input.files[0];
+      formData.append('file1', file);
+  }
+
+  function uploadFile2() {
+      var input = document.getElementById('file2');
+      var file = input.files[0];
+      formData.append('file2', file);
+  }
+
+  function addFile1() {
+  document.getElementById('file1').click();
+}
+
+function addFile2() {
+  document.getElementById('file2').click();
+}
+
+var fileInputs = document.querySelectorAll('input[type="file"]');
+
+fileInputs.forEach(function(fileInput) {
+    fileInput.addEventListener('change', updateFileList);
+});
+
+function updateFileList() {
+    // Get the selected filenames from the file inputs
+    var filenames = [];
+    if (document.getElementById('file1').files[0]) {
+        filenames.push(document.getElementById('file1').files[0].name);
+    }
+    if (document.getElementById('file2').files[0]) {
+        filenames.push(document.getElementById('file2').files[0].name);
+    }
+    
+    var fileList = document.getElementById('fileList');
+    fileList.innerHTML = ''; // clear the list
+    
+    // Add the filenames to the list
+    filenames.forEach(function(filename) {
+        var li = document.createElement('li');
+        var span = document.createElement('span');
+        span.textContent = filename;
+        var button = document.createElement('button');
+        button.textContent = '×';
+        button.addEventListener('click', deleteFile.bind(null, filename));
+        li.appendChild(span);
+        li.appendChild(button);
+        fileList.appendChild(li);
+    });
+}
+
+
+function deleteFile(fieldName) {
+    var fileNode = this.parentNode;
+    fileList.removeChild(fileNode);
+    updateFileList();
+}
+
+
+function submitForm(){
+  var formData = new FormData();
+  var file1 = document.getElementById('file1').files[0];
+  var file2 = document.getElementById('file2').files[0];
+  formData.append('file1', file1, file1.name);
+  formData.append('file2', file2, file2.name);
+  var text = document.getElementsByName('text')[0].value;
+  formData.append('text', text);
+  const request = new XMLHttpRequest();
+  request.open("POST", "http://localhost:8080/DocuLegal");
+  request.onload = function() {
+    // get the response text from the server
+    var responseText = request.responseText;
+    // insert the response HTML into the responseContainer div
+    var responseContainer = document.getElementById('responseContainer');
+    responseContainer.innerHTML = responseText;
+
+// Add a close button to the response container
+var closeButton = document.createElement('button');
+closeButton.textContent = 'Close';
+closeButton.addEventListener('click', function() {
+    responseContainer.style.display = 'none';
+});
+responseContainer.appendChild(closeButton);
+    responseContainer.style.display = 'block';
+  };
+  request.send(formData);
+}
+  </script>
 </body>
 </html>
