@@ -2,38 +2,33 @@ package main
 
 import (
 	"DocuLegal/Models"
+	"bytes"
+	"context"
+	"encoding/csv"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"encoding/csv"
-	"fmt"
-	//"io/ioutil"
+	"path/filepath"
 	"strconv"
-	"bytes"
-	"unicode/utf8"
-	"context"
 	"strings"
-	//"time"
-	//"html/template"
+	"unicode/utf8"
 
-	"github.com/jung-kurt/gofpdf"
 	"github.com/google/uuid"
-
+	"github.com/jung-kurt/gofpdf"
 	openai "github.com/sashabaranov/go-openai"
 )
 
 func main() {
-	 // Register the file server as the handler for all requests
-	 dir := "./tmp"
+	// Create a new file server for the directory
+	dir := "./tmp"
+	fileServer := http.FileServer(http.Dir(dir))
+	// Register the file server on the /static endpoint
+	http.HandleFunc("/static/", func(w http.ResponseWriter, r *http.Request) {
+		http.StripPrefix("/static", fileServer).ServeHTTP(w, r)
+	})
 
-	 // Create a new file server for the directory
-	 fileServer := http.FileServer(http.Dir(dir))
- 
-	 // Register the file server on the /static endpoint
-	 http.HandleFunc("/static/", func(w http.ResponseWriter, r *http.Request) {
-		 http.StripPrefix("/static", fileServer).ServeHTTP(w, r)
-	 })
 	http.HandleFunc("/DocuLegal", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			// Serve the index.html file for GET requests
@@ -61,83 +56,131 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	err = os.MkdirAll("./uploads", os.ModePerm)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Set up a unique folder for the user uploads
 	id := uuid.New()
-	// Create the 'uploads' directory if it doesn't exist
-	err = os.MkdirAll("./tmp/uploads"+id.String(), os.ModePerm)
+	err = os.MkdirAll("./tmp/uploads/uploads"+id.String(), os.ModePerm)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	files := r.MultipartForm.File["files[]"]
-	var UploadedFiles []string
-	for i, file := range files {
-		// Copy each uploaded file to the 'uploads' directory
-		srcFile, err := file.Open()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer srcFile.Close()
-		destFile, err := os.Create(fmt.Sprintf("./tmp/uploads"+id.String()+"/%d_%s", i, file.Filename))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer destFile.Close()
-
-		_, err = io.Copy(destFile, srcFile)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		UploadedFiles = append(UploadedFiles, file.Filename)
-		fmt.Printf("File %d uploaded: %s\n", i, file.Filename)
+	//Handle Excel file
+	file1, handler1, err := r.FormFile("file1")
+	if err != nil {
+		http.Error(w, "Error retrieving file1", http.StatusBadRequest)
+		return
 	}
-	testPrompt := r.FormValue("text")
-	//fmt.Printf("Text entered: %s\n", testPrompt)
-	//Process files
-	chatGPTPrompt, err := ProcessFiles("./tmp/uploads"+id.String()+"/0_"+UploadedFiles[0], "./tmp/uploads"+id.String()+"/1_"+UploadedFiles[1], testPrompt)
-	// Write the PDF document to the HTTP response body
-	/*data, err := ioutil.ReadFile("template.pdf")
-    if err != nil { 
-		fmt.Fprint(w, err) 
+	log.Println(handler1.Filename)
+	defer file1.Close()
+	/*if hasXLSXExtension(handler1.Filename) == false {
+		http.Error(w, "Wrong file extension, please input a .xlsx and a .docx", http.StatusInternalServerError)
+		return
 	}*/
-	if err != nil { 
-		fmt.Fprint(w, err) 
+	destFile1, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", handler1.Filename))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-    //http.ServeContent(w, r, "template.pdf", time.Now(),   bytes.NewReader(data))
-	html := `
+	defer destFile1.Close()
+
+	_, err = io.Copy(destFile1, file1)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Printf("Excel file uploaded: %s\n", handler1.Filename)
+
+	//Handle Word file
+	file2, handler2, err := r.FormFile("file2")
+	if err != nil {
+		http.Error(w, "Error retrieving file2", http.StatusBadRequest)
+		return
+	}
+
+	log.Println(handler2.Filename)
+	defer file2.Close()
+	/*if hasDOCXExtension(handler1.Filename) == false {
+		http.Error(w, "Wrong file extension, please input a .xlsx and a .docx", http.StatusInternalServerError)
+		return
+	}*/
+	destFile2, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", handler2.Filename))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer destFile2.Close()
+
+	_, err = io.Copy(destFile2, file2)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Printf("Word file uploaded: %s\n", handler2.Filename)
+
+/*
+files := r.MultipartForm.File["files[]"]
+for _, file := range files {
+	// Copy each uploaded file to the 'uploads' directory
+	srcFile, err := file.Open()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", file.Filename))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	if err != nil {		_, err = io.Copy(destFile, srcFile)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Printf("File uploaded: %s\n", file.Filename)
+	}
+
+	fmt.Fprint(w, "Files uploaded successfully")
+}
+*/
+	//Handle user prompt
+	testPrompt := r.FormValue("text")
+
+	// Process files
+	/*chatGPTPrompt, err := ProcessFiles("./tmp/uploads/uploads"+id.String()+"/0_"+handler1.Filename, "./tmp/uploads/uploads"+id.String()+"/1_"+handler2.Filename, testPrompt)
+	if err != nil {
+		fmt.Fprint(w, err)
+	}*/
+
+	//Output a page with results
+	html := `<!DOCTYPE html>
 		<html>
 			<head>
   				<meta charset="UTF-8">
   				<title>DocuLegal</title>
 			</head>
 			<body>
-				<h1>Voici le récapitulatif de votre prompt :</h1>
+				<h3>Voici le récapitulatif de votre prompt :</h3>
 				<p>%s</p>
 				<br>
-				<p>Voici le lien pour accéder à votre document : <a href="https://delaborde.org/static/template.pdf" target="_blank">Mon document</a>
+				<p>Voici le lien pour accéder à votre template variabilisé : <a href="https://delaborde.org/static/template.pdf" target="_blank">Mon document</a>
 			</body>
 		</html>
 	`
-	html = fmt.Sprintf(html, chatGPTPrompt)
+	html = fmt.Sprintf(html, testPrompt)
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, html)
-
-	/*_, err = w.Write(chatGPTTemplate)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-		//pdfGeneration(template, clientsDataFilePath)
-
-	}*/
-	// Retrieve and print out the value of the text field
-	//text := r.FormValue("text")
-	//fmt.Printf("Text entered: %s\n", text)
-
-	//fmt.Fprint(w, "Cliquez ici pour accéder à votre document : https://localhost:8080/")
+	log.Println("BON")
 }
 
 func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt string) (string, error) {
@@ -201,21 +244,21 @@ func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt strin
 	err := pdf.OutputFileAndClose("./tmp/template.pdf")
 	if err != nil {
 		log.Println(err)
-		return chatGPTPrompt, err 
+		return chatGPTPrompt, err
 	}
 
 	//Delete all files
 	deleteFiles()
 	//PDF output
 	/*
-	return pdf.CreateTemplate(func(tpl *gofpdf.Tpl) {
-		//tpl.Image(example.ImageFile("logo.png"), 6, 6, 30, 0, false, "", 0, "")
-		tpl.SetFont("Arial", "", 14)
-		//tpl.Text(40, 20, "Template says hello")
-		//tpl.SetDrawColor(0, 100, 200)
-		//tpl.SetLineWidth(2.5)
-		//tpl.Line(95, 12, 105, 22)
-	}).Bytes()*/
+		return pdf.CreateTemplate(func(tpl *gofpdf.Tpl) {
+			//tpl.Image(example.ImageFile("logo.png"), 6, 6, 30, 0, false, "", 0, "")
+			tpl.SetFont("Arial", "", 14)
+			//tpl.Text(40, 20, "Template says hello")
+			//tpl.SetDrawColor(0, 100, 200)
+			//tpl.SetLineWidth(2.5)
+			//tpl.Line(95, 12, 105, 22)
+		}).Bytes()*/
 	return chatGPTPrompt, nil
 }
 
@@ -297,7 +340,7 @@ func pdfGeneration(template string, clientsDataFilePath string) {
 }
 
 func deleteFilesHandler(w http.ResponseWriter, r *http.Request) {
-	err := os.RemoveAll("/tmp/uploads")
+	err := os.RemoveAll("./tmp/uploads/")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -307,7 +350,7 @@ func deleteFilesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteFiles() {
-	err := os.RemoveAll("/tmp/uploads")
+	err := os.RemoveAll("./tmp/uploads/")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -330,7 +373,14 @@ func deleteFilesInternal() error {
 
 	return nil
 }
+func hasDOCXExtension(filename string) bool {
+	extension := filepath.Ext(filename)
+	log.Println(extension)
+	return extension == ".docx"
+}
 
-//chatgpt to template
-//fill template
-//Loop for template
+func hasXLSXExtension(filename string) bool {
+	extension := filepath.Ext(filename)
+	log.Println(extension)
+	return extension == ".xlsx"
+}
