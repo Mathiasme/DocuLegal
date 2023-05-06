@@ -1,3 +1,4 @@
+//gcloud app deploy app.yaml --project tonal-edge-288718
 package main
 
 import (
@@ -197,7 +198,8 @@ for _, file := range files {
 	testPrompt := r.FormValue("text")
 
 	// Process files
-	chatGPTPrompt, err := ProcessFiles(excelFile.Name(), wordFile.Name(), testPrompt)
+	id := uuid.New()
+	chatGPTPrompt, err := ProcessFiles(excelFile.Name(), wordFile.Name(), testPrompt, id.String())
 	if err != nil {
 		fmt.Fprint(w, err)
 	}
@@ -213,20 +215,20 @@ for _, file := range files {
 				<h3>Voici le récapitulatif de votre prompt :</h3>
 				<p>%s</p>
 				<br>
-				<p>Voici le lien pour accéder à votre template variabilisé : <a href="https://delaborde.org/static/template.pdf" target="_blank">Mon document</a>
+				<p>Voici le lien pour accéder à votre template variabilisé : <a href="https://delaborde.org/static/%s-template.pdf" target="_blank">Mon document</a>
 				<br>
 				<br>
 				<p> Ci-dessous voici vos fichiers :</p>
 			</body>
 		</html>
 	`
-	html = fmt.Sprintf(html, chatGPTPrompt)
+	html = fmt.Sprintf(html, chatGPTPrompt, id.String())
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, html)
 	log.Println("BON")
 }
 
-func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt string) (string, error) {
+func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt string, uniqueID string) (string, error) {
 	log.Println("Launched processing..")
 	// docx to text
 	initialTemplateContent := models.ExtractTextFromWordDocument(wordFilePath)
@@ -284,8 +286,7 @@ func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt strin
 	pdf.MultiCell(0, 10, str, "", "", false)
 
 	// Output to a file
-	id := uuid.New()
-	err := pdf.OutputFileAndClose("/tmp/"+id.String()+"-template.pdf")
+	err := pdf.OutputFileAndClose("/tmp/"+uniqueID+"-template.pdf")
 	if err != nil {
 		log.Println(err)
 		return chatGPTPrompt, err
