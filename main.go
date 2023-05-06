@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -22,7 +21,7 @@ import (
 
 func main() {
 	// Create a new file server for the directory
-	dir := "./tmp"
+	dir := "/tmp"
 	fileServer := http.FileServer(http.Dir(dir))
 	// Register the file server on the /static endpoint
 	http.HandleFunc("/static/", func(w http.ResponseWriter, r *http.Request) {
@@ -51,23 +50,25 @@ func main() {
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Files pushed by user")
 	err := r.ParseMultipartForm(10 << 20) // 10 MB file size limit
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = os.MkdirAll("./uploads", os.ModePerm)
+	/*err = os.MkdirAll("./tmp/uploads", os.ModePerm)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
+	}*/
 	// Set up a unique folder for the user uploads
-	id := uuid.New()
+	/*id := uuid.New()
+	
 	err = os.MkdirAll("./tmp/uploads/uploads"+id.String(), os.ModePerm)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
+	}*/
 
 	//Handle Excel file
 	file1, handler1, err := r.FormFile("file1")
@@ -77,50 +78,89 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println(handler1.Filename)
 	defer file1.Close()
-	/*if hasXLSXExtension(handler1.Filename) == false {
+	if hasXLSXExtension(handler1.Filename) == false {
 		http.Error(w, "Wrong file extension, please input a .xlsx and a .docx", http.StatusInternalServerError)
 		return
-	}*/
+	}
+	excelFile, err := os.CreateTemp("/tmp", "*-"+handler1.Filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(excelFile.Name())
+	defer os.Remove(excelFile.Name()) // clean up
+
+
+// Read the file bytes into a buffer
+buf := make([]byte, handler1.Size)
+_, err = file1.Read(buf)
+if err != nil {
+    log.Fatal(err)// Handle the error
+}
+	if _, err := excelFile.Write(buf); err != nil {
+		log.Fatal(err)
+	}
+	if err := excelFile.Close(); err != nil {
+		log.Fatal(err)
+	}
+	/*
 	destFile1, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", handler1.Filename))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer destFile1.Close()
-
-	_, err = io.Copy(destFile1, file1)
+	*/
+/*
+	_, err = io.Copy(excelFile, file1)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	fmt.Printf("Excel file uploaded: %s\n", handler1.Filename)
+	}*/
+	fmt.Printf("Excel file temp uploaded: %s\n", excelFile.Name())
 
-	//Handle Word file
+//Handle Word file
 	file2, handler2, err := r.FormFile("file2")
 	if err != nil {
 		http.Error(w, "Error retrieving file2", http.StatusBadRequest)
 		return
 	}
-
 	log.Println(handler2.Filename)
 	defer file2.Close()
-	/*if hasDOCXExtension(handler1.Filename) == false {
+	if hasDOCXExtension(handler2.Filename) == false {
 		http.Error(w, "Wrong file extension, please input a .xlsx and a .docx", http.StatusInternalServerError)
 		return
-	}*/
-	destFile2, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", handler2.Filename))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
-	defer destFile2.Close()
+	wordFile, err := os.CreateTemp("/tmp", "*-"+handler2.Filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(wordFile.Name()) // clean up
 
-	_, err = io.Copy(destFile2, file2)
+	// Read the file bytes into a buffer
+buf = make([]byte, handler2.Size)
+_, err = file2.Read(buf)
+if err != nil {
+    // Handle the error
+}
+	if _, err := wordFile.Write(buf); err != nil {
+		log.Fatal(err)
+	}
+	if err := wordFile.Close(); err != nil {
+		log.Fatal(err)
+	}
+	/*destFile2, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", handler2.Filename))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Printf("Word file uploaded: %s\n", handler2.Filename)
+	defer destFile2.Close()*/
+
+	/*_, err = io.Copy(wordFile, file2)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}*/
+	fmt.Printf("Word file uploaded: %s\n", wordFile.Name())
 
 /*
 files := r.MultipartForm.File["files[]"]
@@ -157,10 +197,10 @@ for _, file := range files {
 	testPrompt := r.FormValue("text")
 
 	// Process files
-	/*chatGPTPrompt, err := ProcessFiles("./tmp/uploads/uploads"+id.String()+"/0_"+handler1.Filename, "./tmp/uploads/uploads"+id.String()+"/1_"+handler2.Filename, testPrompt)
+	chatGPTPrompt, err := ProcessFiles(excelFile.Name(), wordFile.Name(), testPrompt)
 	if err != nil {
 		fmt.Fprint(w, err)
-	}*/
+	}
 
 	//Output a page with results
 	html := `<!DOCTYPE html>
@@ -174,10 +214,13 @@ for _, file := range files {
 				<p>%s</p>
 				<br>
 				<p>Voici le lien pour accéder à votre template variabilisé : <a href="https://delaborde.org/static/template.pdf" target="_blank">Mon document</a>
+				<br>
+				<br>
+				<p> Ci-dessous voici vos fichiers :</p>
 			</body>
 		</html>
 	`
-	html = fmt.Sprintf(html, testPrompt)
+	html = fmt.Sprintf(html, chatGPTPrompt)
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, html)
 	log.Println("BON")
@@ -241,14 +284,15 @@ func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt strin
 	pdf.MultiCell(0, 10, str, "", "", false)
 
 	// Output to a file
-	err := pdf.OutputFileAndClose("./tmp/template.pdf")
+	id := uuid.New()
+	err := pdf.OutputFileAndClose("/tmp/"+id.String()+"-template.pdf")
 	if err != nil {
 		log.Println(err)
 		return chatGPTPrompt, err
 	}
 
 	//Delete all files
-	deleteFiles()
+	//deleteFiles()
 	//PDF output
 	/*
 		return pdf.CreateTemplate(func(tpl *gofpdf.Tpl) {
@@ -340,7 +384,7 @@ func pdfGeneration(template string, clientsDataFilePath string) {
 }
 
 func deleteFilesHandler(w http.ResponseWriter, r *http.Request) {
-	err := os.RemoveAll("./tmp/uploads/")
+	err := os.RemoveAll("/tmp")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -350,7 +394,7 @@ func deleteFilesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteFiles() {
-	err := os.RemoveAll("./tmp/uploads/")
+	err := os.RemoveAll("/tmp")
 	if err != nil {
 		log.Fatal(err)
 	}
