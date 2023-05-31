@@ -1,0 +1,6 @@
+runtime: go118
+service: default
+handlers:
+- url: /.*
+  script: auto
+  secure: always

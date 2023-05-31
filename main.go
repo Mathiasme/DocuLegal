@@ -1,4 +1,3 @@
-//gcloud app deploy app.yaml --project tonal-edge-288718
 package main
 
 import (
@@ -57,19 +56,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	/*err = os.MkdirAll("./tmp/uploads", os.ModePerm)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}*/
-	// Set up a unique folder for the user uploads
-	/*id := uuid.New()
-	
-	err = os.MkdirAll("./tmp/uploads/uploads"+id.String(), os.ModePerm)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}*/
 
 	//Handle Excel file
 	file1, handler1, err := r.FormFile("file1")
@@ -103,20 +89,6 @@ if err != nil {
 	if err := excelFile.Close(); err != nil {
 		log.Fatal(err)
 	}
-	/*
-	destFile1, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", handler1.Filename))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer destFile1.Close()
-	*/
-/*
-	_, err = io.Copy(excelFile, file1)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}*/
 	fmt.Printf("Excel file temp uploaded: %s\n", excelFile.Name())
 
 //Handle Word file
@@ -148,52 +120,9 @@ if err != nil {
 	}
 	if err := wordFile.Close(); err != nil {
 		log.Fatal(err)
-	}
-	/*destFile2, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", handler2.Filename))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer destFile2.Close()*/
-
-	/*_, err = io.Copy(wordFile, file2)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}*/
+	
 	fmt.Printf("Word file uploaded: %s\n", wordFile.Name())
 
-/*
-files := r.MultipartForm.File["files[]"]
-for _, file := range files {
-	// Copy each uploaded file to the 'uploads' directory
-	srcFile, err := file.Open()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer srcFile.Close()
-
-	destFile, err := os.Create(fmt.Sprintf("./tmp/uploads/uploads"+id.String()+"/%s", file.Filename))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer destFile.Close()
-
-	_, err = io.Copy(destFile, srcFile)
-	if err != nil {		_, err = io.Copy(destFile, srcFile)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Printf("File uploaded: %s\n", file.Filename)
-	}
-
-	fmt.Fprint(w, "Files uploaded successfully")
-}
-*/
 	//Handle user prompt
 	testPrompt := r.FormValue("text")
 
@@ -215,7 +144,7 @@ for _, file := range files {
 				<h3>Voici le récapitulatif de votre prompt :</h3>
 				<p>%s</p>
 				<br>
-				<p>Voici le lien pour accéder à votre template variabilisé : <a href="https://delaborde.org/static/%s-template.pdf" target="_blank">Mon document</a>
+				<p>Voici le lien pour accéder à votre template variabilisé : <a href="http://localhost:8080.org/static/%s-template.pdf" target="_blank">Mon document</a>
 				<br>
 				<br>
 				<p> Ci-dessous voici vos fichiers :</p>
@@ -225,7 +154,6 @@ for _, file := range files {
 	html = fmt.Sprintf(html, chatGPTPrompt, id.String())
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, html)
-	log.Println("BON")
 }
 
 func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt string, uniqueID string) (string, error) {
@@ -247,13 +175,8 @@ func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt strin
 	chatGPTPrompt = strings.Replace(chatGPTPrompt, "__excelFirstRow__", strings.Join(firstLine, ";"), -1)
 
 	//chatgpt prompt assembly
-	template := ChatGPT(chatGPTPrompt, initialTemplateContent /*, headerList, firstRowList*/)
-	//fmt.Println(template)
-	/*err = ioutil.WriteFile("outputChatGPT.txt", []byte(template), 0644)
-	if err != nil {
-		panic(err)
-	}*/
-
+	template := ChatGPT(chatGPTPrompt, initialTemplateContent)
+	
 	// Convert the text to a []rune
 	runeSlice := []rune(template)
 
@@ -291,19 +214,6 @@ func ProcessFiles(excelFilePath string, wordFilePath string, chatGPTPrompt strin
 		log.Println(err)
 		return chatGPTPrompt, err
 	}
-
-	//Delete all files
-	//deleteFiles()
-	//PDF output
-	/*
-		return pdf.CreateTemplate(func(tpl *gofpdf.Tpl) {
-			//tpl.Image(example.ImageFile("logo.png"), 6, 6, 30, 0, false, "", 0, "")
-			tpl.SetFont("Arial", "", 14)
-			//tpl.Text(40, 20, "Template says hello")
-			//tpl.SetDrawColor(0, 100, 200)
-			//tpl.SetLineWidth(2.5)
-			//tpl.Line(95, 12, 105, 22)
-		}).Bytes()*/
 	return chatGPTPrompt, nil
 }
 
@@ -322,8 +232,8 @@ func windows1252EncodedBytes(b []byte) []byte {
 	return windows1252Encoded
 }
 
-func ChatGPT(prompt string, paragraph string /*, headerList string, firstRowList string*/) string {
-	client := openai.NewClient("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")
+func ChatGPT(prompt string, paragraph string) string {
+	client := openai.NewClient("CHAT-GPT_KEY")
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
@@ -342,7 +252,6 @@ func ChatGPT(prompt string, paragraph string /*, headerList string, firstRowList
 		return "No answer from chatGPT"
 	}
 
-	//fmt.Println(resp.Choices[0].Message.Content)
 	return resp.Choices[0].Message.Content
 }
 
