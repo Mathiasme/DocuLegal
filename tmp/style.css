@@ -1,0 +1,85 @@
+.textArea {
+    resize: vertical; /* allows for vertical resizing of the textarea only */
+			width: 100%; /* sets the initial width to 100% of the container */
+			height: auto; /* sets the height to fit the content */
+			padding: 10px; /* adds padding inside the textarea */
+            overflow: auto; /* adds a scrollbar if necessary */
+			border: 1px solid #ccc; /* adds a border around the textarea */
+			box-sizing: border-box; /* includes padding and border in the total width/height */
+}
+
+/* Style input file field */
+.custom-file-upload1 input[type="file"] {
+    display: none;
+}
+
+/* Style file upload label */
+.custom-file-upload1 .file-upload-label1 {
+    width: 100%;
+        height: 100%;
+        resize: none; /* Prevent the user from resizing the textarea */
+        border: 1px solid #ccc;
+        padding: 10px;
+        box-sizing: border-box;
+}
+
+.closeButton {
+    display: inline-block;
+    background-color: #d14444;
+    color: #333;
+    padding: 10px 20px;
+    border-radius: 20px;
+    text-align: center;
+    font-size: 16px;
+    text-decoration: none;
+    box-shadow: 0px 2px 3px rgba(0, 0, 0, 0.1);
+}
+
+.closeButton:hover {
+    background-color: #ff9999;
+}
+
+.listButton {
+    all: unset; /* reset all styles to their default values */
+}
+
+
+/* Style file upload label on hover */
+.custom-file-upload1 .file-upload-label1:hover {
+    background-color: #098234;
+}
+
+/* Style input file field */
+.custom-file-upload2 input[type="file"] {
+    display: none;
+}
+/* Style file upload label */
+.custom-file-upload2 .file-upload-label2 {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #207ab7;
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+/* Style file upload label on hover */
+.custom-file-upload2 .file-upload-label2:hover {
+    background-color: #125e91;
+}
+
+#responseContainer {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
